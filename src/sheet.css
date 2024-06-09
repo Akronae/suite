@@ -1,0 +1,19 @@
+@tailwind utilities;
+
+.handsontable td {
+  @apply dark:bg-zinc-950 dark:border-zinc-800 dark:text-zinc-400 !important;
+  @apply text-base;
+}
+
+.handsontableInput {
+  @apply dark:bg-black dark:text-zinc-400 dark:text-white;
+}
+
+.handsontable th  {
+  @apply dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400 !important;
+  @apply text-base font-bold;
+}
+
+.relative.overflow-hidden, [data-radix-scroll-area-viewport], [data-radix-scroll-area-viewport] div {
+  height: 100%;
+}
