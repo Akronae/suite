@@ -11,7 +11,6 @@ import { useStateOr } from "@/utils/use-state-or";
 export type NavLink = {
   title: string;
   label?: string;
-  icon: LucideIcon;
   variant: "default" | "ghost";
 };
 export type NavProps = {

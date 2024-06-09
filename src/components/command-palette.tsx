@@ -41,8 +41,8 @@ export function CommandPalette() {
       <CommandList style={{ zIndex: 300 }}>
         <CommandEmpty>No results found.</CommandEmpty>
         {commands.value.map((group) => (
-          <>
-            <CommandGroup key={group.label} heading={group.label}>
+          <div key={group.label}>
+            <CommandGroup heading={group.label}>
               {group.commands.map((command) => (
                 <CommandItem
                   key={command.label}
@@ -60,7 +60,7 @@ export function CommandPalette() {
               ))}
             </CommandGroup>
             <CommandSeparator />
-          </>
+          </div>
         ))}
       </CommandList>
     </CommandDialog>

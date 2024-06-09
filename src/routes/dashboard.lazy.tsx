@@ -2,8 +2,8 @@ import { useQuery } from "@/commands/query";
 import { Codeblock } from "@/components/codeblock";
 import { Col } from "@/components/col";
 import { ModeToggle } from "@/components/mode-toggle";
-import { Nav, NavLink } from "@/components/nav";
-import { Row } from "@/components/row";
+import { Nav } from "@/components/nav";
+import { Row, RowProps } from "@/components/row";
 import { SpinLoader } from "@/components/spin-loader";
 import { Title } from "@/components/typo/title";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,6 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -33,13 +32,17 @@ import {
   ArrowLeft,
   ArrowRight,
   RotateCw,
-  Inbox,
-  Loader2,
-  Loader,
+  Table,
+  Database,
 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
-function TopBar() {
+export type TopBarProps = RowProps & {
+  search?: State<string>;
+};
+export function TopBar(props: TopBarProps) {
+  const { search, ...rest } = props;
+
   return (
     <Row
       alignSelf="start"
@@ -47,6 +50,7 @@ function TopBar() {
       className="border-b bg-muted/40"
       style={{ width: "100%", height: 40, padding: "0 20px" }}
       gap={10}
+      {...rest}
     >
       <Row gap={10}>
         <RotateCw className="text-muted-foreground/75 cursor-pointer hover:bg-white/10 rounded h-6 w-6 p-1" />
@@ -60,6 +64,7 @@ function TopBar() {
           left={Search}
           size="sm"
           style={{ width: 300 }}
+          model={search}
         />
       </Row>
       <ModeToggle variant={"ghost"} style={{ alignSelf: "end" }} />
@@ -127,9 +132,31 @@ function Dashboard() {
     { enabled: !!dbSelected.value },
   );
   const tableSelected = useState<string | undefined>(undefined);
-  const table = useQuery<{ [index: string]: string }[]>(
+  const tableSchema = useQuery<
+    {
+      Default: string;
+      Extra: string;
+      Field: string;
+      Key: string;
+      Null: string;
+      Type: string;
+    }[]
+  >(
     poolid,
-    `SELECT * FROM ${dbSelected.value}.${tableSelected.value}`,
+    `DESCRIBE ${dbSelected.value}.${tableSelected.value}`,
+    [tableSelected.value],
+    { enabled: !!tableSelected.value },
+  );
+  const search = useState("");
+
+  let where: string = "";
+  const fields = tableSchema.value?.map((x) => x.Field);
+  if (search.value && fields) {
+    where = `WHERE ${fields.map((x) => x + ` LIKE '%${search.value}%'`).join(" OR ")}`;
+  }
+  const tableData = useQuery<{ [index: string]: string }[]>(
+    poolid,
+    `SELECT * FROM ${dbSelected.value}.${tableSelected.value} ${where} LIMIT 100000`,
     [tableSelected.value],
     { enabled: !!tableSelected.value },
   );
@@ -138,32 +165,44 @@ function Dashboard() {
     tableSelected.value = undefined;
   }, [dbSelected.value]);
   useEffect(() => {
-    table.value = undefined;
+    tableData.value = undefined;
   }, [tableSelected.value]);
   useEffect(() => {
     if (!databases.value) return;
+    const goToDbCommands = databases.value.map((x) => ({
+      label: x.Database,
+      icon: Database,
+      onSelect: () => (dbSelected.value = x.Database),
+    }));
+    const goToDbGroup = commands.value.find(
+      (x) => x.label === "Go to Database",
+    ) ?? {
+      label: "Go to Database",
+      commands: [],
+    };
+    goToDbGroup.commands = goToDbCommands;
     commands.value = [
-      {
-        label: "Go to Database",
-        commands: databases.value.map((x) => ({
-          label: x.Database,
-          icon: Inbox,
-          onSelect: () => (dbSelected.value = x.Database),
-        })),
-      },
+      ...commands.value.filter((x) => x !== goToDbGroup),
+      goToDbGroup,
     ];
   }, [databases.value]);
   useEffect(() => {
     if (!tables.value) return;
+    const goToTableCommands = tables.value.map((x) => ({
+      label: Object.values(x)[0],
+      icon: Table,
+      onSelect: () => (tableSelected.value = Object.values(x)[0]),
+    }));
+    const goToTableGroup = commands.value.find(
+      (x) => x.label === "Go to table",
+    ) ?? {
+      label: "Go to table",
+      commands: [],
+    };
+    goToTableGroup.commands = goToTableCommands;
     commands.value = [
-      {
-        label: "Go to table",
-        commands: tables.value.map((x) => ({
-          label: Object.values(x)[0],
-          icon: Inbox,
-          onSelect: () => (tableSelected.value = Object.values(x)[0]),
-        })),
-      },
+      ...commands.value.filter((x) => x !== goToTableGroup),
+      goToTableGroup,
     ];
   }, [tables.value]);
 
@@ -173,12 +212,14 @@ function Dashboard() {
 
   const jsonToMatrix = (data: { [index: string]: string }[]) => {
     if (!data.length) {
-      return [];
+      return null;
     }
     const keys = Object.keys(data[0]);
     const values = data.map((x) => Object.values(x));
     return [keys, ...values];
   };
+
+  const loading = tableData.loading || tables.loading || databases.loading;
 
   return (
     <Row flex={1} style={{ maxHeight: "100%" }}>
@@ -187,7 +228,7 @@ function Dashboard() {
           <Col gap={10}>
             <DatabaseSwitcher
               databases={databases.value.map((x) => ({
-                icon: <Inbox />,
+                icon: <Database />,
                 label: x.Database,
               }))}
               selected={dbSelected}
@@ -196,7 +237,6 @@ function Dashboard() {
             <Nav
               isCollapsed={false}
               links={(tables.value ?? []).map((x) => ({
-                icon: Inbox,
                 title: Object.values(x)[0],
                 variant: "ghost",
               }))}
@@ -212,15 +252,22 @@ function Dashboard() {
             height={"100%"}
             style={{ overflow: "auto" }}
           >
-            <TopBar />
-            {table.value ? (
-              <Sheet data={jsonToMatrix(table.value)} />
-            ) : table.loading ? (
+            <TopBar search={search} />
+            {tableData.value && fields ? (
+              <Sheet
+                data={jsonToMatrix(tableData.value) ?? [fields]}
+                search={search.value}
+              />
+            ) : loading ? (
               <SpinLoader />
             ) : (
-              <Title size="2xl" className="m-auto text-zinc-600 font-semibold">
-                Press <Codeblock>Ctrl+K</Codeblock> to open the command palette.
-              </Title>
+              <Col gap={50} alignItems="center" className="m-auto">
+                <img src="src/assets/icon.png" className="m-auto w-80" />
+                <Title size="2xl" className="text-zinc-600 font-semibold">
+                  Press <Codeblock>Ctrl+K</Codeblock> to open the command
+                  palette.
+                </Title>
+              </Col>
             )}
           </Col>
         </ResizablePanel>
