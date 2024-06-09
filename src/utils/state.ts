@@ -13,8 +13,11 @@ export class State<T> extends Array {
   get value() {
     return this[0];
   }
+  get set() {
+    return this[1];
+  }
 
   set value(value: T) {
-    this[1](value);
+    this.set(value);
   }
 }

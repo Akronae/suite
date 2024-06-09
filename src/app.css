@@ -69,8 +69,9 @@ body,
   width: 12px;
 }
 
-*::-webkit-scrollbar-track {
-  @apply bg-background;
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner {
+  @apply dark:bg-zinc-900;
 }
 
 *::-webkit-scrollbar-thumb {

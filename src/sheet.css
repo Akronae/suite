@@ -9,11 +9,19 @@
   @apply dark:bg-black dark:text-zinc-400 dark:text-white;
 }
 
-.handsontable th  {
+.handsontable th {
   @apply dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400 !important;
   @apply text-base font-bold;
 }
 
-.relative.overflow-hidden, [data-radix-scroll-area-viewport], [data-radix-scroll-area-viewport] div {
+.relative.overflow-hidden,
+[data-radix-scroll-area-viewport],
+[data-radix-scroll-area-viewport] div {
   height: 100%;
+}
+
+.ht_clone_inline_start,
+.ht_clone_top,
+.ht_clone_top_inline_start_corner {
+  z-index: 10;
 }

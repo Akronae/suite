@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@handsontable/react": "^14.3.0",
+    "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
     "@radix-ui/react-navigation-menu": "^1.1.4",
     "@radix-ui/react-scroll-area": "^1.0.5",
@@ -23,6 +24,7 @@
     "@tauri-apps/api": "^1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "cmdk": "^1.0.0",
     "handsontable": "^14.3.0",
     "jotai": "^2.8.3",
     "lucide-react": "^0.383.0",

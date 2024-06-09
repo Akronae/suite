@@ -1,8 +1,11 @@
 import { useQuery } from "@/commands/query";
+import { Codeblock } from "@/components/codeblock";
 import { Col } from "@/components/col";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Nav, NavLink } from "@/components/nav";
 import { Row } from "@/components/row";
+import { SpinLoader } from "@/components/spin-loader";
+import { Title } from "@/components/typo/title";
 import { Input } from "@/components/ui/input";
 import {
   ResizableHandle,
@@ -19,13 +22,22 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Sheet } from "@/sheet";
+import { useCommands } from "@/state/commands";
 import { useConnections } from "@/state/connections";
 import { State } from "@/utils/state";
 import { useState } from "@/utils/use-state";
 import { SelectTriggerProps } from "@radix-ui/react-select";
 import { Navigate, createLazyFileRoute } from "@tanstack/react-router";
-import { Search, ArrowLeft, ArrowRight, RotateCw, Inbox, Loader2 } from "lucide-react";
-import { useRef } from "react";
+import {
+  Search,
+  ArrowLeft,
+  ArrowRight,
+  RotateCw,
+  Inbox,
+  Loader2,
+  Loader,
+} from "lucide-react";
+import { useEffect, useRef } from "react";
 
 function TopBar() {
   return (
@@ -44,7 +56,7 @@ function TopBar() {
       <Row>
         <Input
           type="search"
-          placeholder="Search products..."
+          placeholder="Search..."
           left={Search}
           size="sm"
           style={{ width: 300 }}
@@ -67,10 +79,10 @@ export function DatabaseSwitcher(props: DatabaseSwitcherProps) {
   const { databases, selected, ...rest } = props;
 
   return (
-    <Select defaultValue={selected[0]} onValueChange={selected[1]}>
+    <Select value={selected.value} onValueChange={selected.set}>
       <SelectTrigger
         className={cn(
-          "flex items-center gap-2 [&>span]:line-clamp-1 [&>span]:flex [&>span]:w-full [&>span]:items-center [&>span]:gap-1 [&>span]:truncate [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0"
+          "flex items-center gap-2 [&>span]:line-clamp-1 [&>span]:flex [&>span]:w-full [&>span]:items-center [&>span]:gap-1 [&>span]:truncate [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0",
         )}
         aria-label="Select account"
         {...rest}
@@ -107,23 +119,56 @@ function Dashboard() {
   }
   const poolid = connections.value[0].id;
   const databases = useQuery<{ Database: string }[]>(poolid, "SHOW DATABASES");
-  const dbSelected = useState(databases.value?.[0].Database);
+  const dbSelected = useState<string | undefined>(undefined);
   const tables = useQuery<{ [index: string]: string }[]>(
     poolid,
     `SHOW TABLES IN ${dbSelected.value}`,
     [dbSelected.value],
-    { enabled: !!dbSelected.value }
+    { enabled: !!dbSelected.value },
   );
-  const tableSelected = useState<NavLink | undefined>(undefined);
+  const tableSelected = useState<string | undefined>(undefined);
   const table = useQuery<{ [index: string]: string }[]>(
     poolid,
-    `SELECT * FROM ${dbSelected.value}.${tableSelected.value?.title}`,
-    [tableSelected.value?.title],
-    { enabled: !!tableSelected.value }
+    `SELECT * FROM ${dbSelected.value}.${tableSelected.value}`,
+    [tableSelected.value],
+    { enabled: !!tableSelected.value },
   );
+  const commands = useCommands();
+  useEffect(() => {
+    tableSelected.value = undefined;
+  }, [dbSelected.value]);
+  useEffect(() => {
+    table.value = undefined;
+  }, [tableSelected.value]);
+  useEffect(() => {
+    if (!databases.value) return;
+    commands.value = [
+      {
+        label: "Go to Database",
+        commands: databases.value.map((x) => ({
+          label: x.Database,
+          icon: Inbox,
+          onSelect: () => (dbSelected.value = x.Database),
+        })),
+      },
+    ];
+  }, [databases.value]);
+  useEffect(() => {
+    if (!tables.value) return;
+    commands.value = [
+      {
+        label: "Go to table",
+        commands: tables.value.map((x) => ({
+          label: Object.values(x)[0],
+          icon: Inbox,
+          onSelect: () => (tableSelected.value = Object.values(x)[0]),
+        })),
+      },
+    ];
+  }, [tables.value]);
 
   if (!databases.value) {
-    return null;
+    return <SpinLoader />;
   }
 
   const jsonToMatrix = (data: { [index: string]: string }[]) => {
@@ -133,7 +178,7 @@ function Dashboard() {
     const keys = Object.keys(data[0]);
     const values = data.map((x) => Object.values(x));
     return [keys, ...values];
-  }
+  };
 
   return (
     <Row flex={1} style={{ maxHeight: "100%" }}>
@@ -161,13 +206,22 @@ function Dashboard() {
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel minSize={30}>
-          <Col flex={1} width={"100%"} height={"100%"} style={{ overflow: "auto" }}>
+          <Col
+            flex={1}
+            width={"100%"}
+            height={"100%"}
+            style={{ overflow: "auto" }}
+          >
             <TopBar />
-            <ScrollArea>
-              {table.value ? <Sheet data={jsonToMatrix(table.value)} /> : <Loader2 className="mr-2 h-12 w-12 animate-spin" />}
-
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+            {table.value ? (
+              <Sheet data={jsonToMatrix(table.value)} />
+            ) : table.loading ? (
+              <SpinLoader />
+            ) : (
+              <Title size="2xl" className="m-auto text-zinc-600 font-semibold">
+                Press <Codeblock>Ctrl+K</Codeblock> to open the command palette.
+              </Title>
+            )}
           </Col>
         </ResizablePanel>
       </ResizablePanelGroup>

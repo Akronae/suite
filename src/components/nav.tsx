@@ -17,7 +17,7 @@ export type NavLink = {
 export type NavProps = {
   isCollapsed: boolean;
   links: NavLink[];
-  selected?: State<NavLink | undefined>;
+  selected?: State<string | undefined>;
 };
 
 export function Nav({ links, selected: selectedProps }: NavProps) {
@@ -34,10 +34,10 @@ export function Nav({ links, selected: selectedProps }: NavProps) {
                 className={cn(
                   buttonVariants({ variant: link.variant, size: "sm" }),
                   "text-zinc-300",
-                  selected.value?.title === link.title && "bg-primary/20",
-                  "justify-start"
+                  selected.value === link.title && "bg-primary/20",
+                  "justify-start",
                 )}
-                onClick={() => (selected.value = link)}
+                onClick={() => (selected.value = link.title)}
               >
                 {link.title}
                 {link.label && (
@@ -45,7 +45,7 @@ export function Nav({ links, selected: selectedProps }: NavProps) {
                     className={cn(
                       "ml-auto",
                       link.variant === "default" &&
-                        "text-background dark:text-white"
+                        "text-background dark:text-white",
                     )}
                   >
                     {link.label}
